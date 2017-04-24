@@ -1,0 +1,2315 @@
+﻿<HTML xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcq="http://purl.org/dc/qualifiers/1.0/" xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:fn="http://www.w3.org/2005/xpath-functions">
+<HEAD>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-16">
+<TITLE>Google Objective-C Style Guide</TITLE>
+<META http-equiv="Content-Type" content="text/html; charset=utf-8">
+<LINK HREF="https://www.google.com/favicon.ico" type="image/x-icon" rel="shortcut icon">
+<LINK HREF="styleguide.css" type="text/css" rel="stylesheet"><SCRIPT language="javascript" type="text/javascript">
+
+                function GetElementsByName(name) {
+                  // Workaround a bug on old versions of opera.
+                  if (document.getElementsByName) {
+                    return document.getElementsByName(name);
+                  } else {
+                    return [document.getElementById(name)];
+                  }
+                }
+
+                /**
+                 * @param {string} namePrefix The prefix of the body name.
+                 * @param {function(boolean): boolean} getVisibility Computes the new
+                 *     visibility state, given the current one.
+                 */
+                function ChangeVisibility(namePrefix, getVisibility) {
+                  var bodyName = namePrefix + '__body';
+                  var buttonName = namePrefix + '__button';
+                  var bodyElements = GetElementsByName(bodyName);
+                  var linkElement = GetElementsByName('link-' + buttonName)[0];
+                  if (bodyElements.length != 1) {
+                    throw Error('ShowHideByName() got the wrong number of bodyElements:  ' + 
+                        bodyElements.length);
+                  } else {
+                    var bodyElement = bodyElements[0];
+                    var buttonElement = GetElementsByName(buttonName)[0];
+                    var isVisible = bodyElement.style.display != "none";
+                    if (getVisibility(isVisible)) {
+                      bodyElement.style.display = "inline";
+                      linkElement.style.display = "block";
+                      buttonElement.innerHTML = '▽';
+                    } else {
+                      bodyElement.style.display = "none";
+                      linkElement.style.display = "none";
+                      buttonElement.innerHTML = '▶';
+                    }
+                  }
+                }
+
+                function ShowHideByName(namePrefix) {
+                  ChangeVisibility(namePrefix, function(old) { return !old; });
+                }
+
+                function ShowByName(namePrefix) {
+                  ChangeVisibility(namePrefix, function() { return true; });
+                }
+
+                function ShowHideAll() {
+                  var allButton = GetElementsByName("show_hide_all_button")[0];
+                  if (allButton.innerHTML == '▽') {
+                    allButton.innerHTML = '▶';
+                    SetHiddenState(document.getElementsByTagName("body")[0].childNodes, "none", '▶');
+                  } else {
+                    allButton.innerHTML = '▽';
+                    SetHiddenState(document.getElementsByTagName("body")[0].childNodes, "inline", '▽');
+                  }
+                }
+
+                // Recursively sets state of all children
+                // of a particular node.
+                function SetHiddenState(root, newState, newButton) {
+                  for (var i = 0; i != root.length; i++) {
+                    SetHiddenState(root[i].childNodes, newState, newButton);
+                    if (root[i].className == 'showhide_button')  {
+                      root[i].innerHTML = newButton;
+                    }
+                    if (root[i].className == 'stylepoint_body' ||
+                        root[i].className == 'link_button')  {
+                      root[i].style.display = newState;
+                    }
+                  }
+                }
+
+
+                function EndsWith(str, suffix) {
+                  var l = str.length - suffix.length;
+                  return l >= 0 && str.indexOf(suffix, l) == l;
+                }
+
+                function RefreshVisibilityFromHashParam() {
+                  var hashRegexp = new RegExp('#([^&#]*)$');
+                  var hashMatch = hashRegexp.exec(window.location.href);
+                  var anchor = hashMatch && GetElementsByName(hashMatch[1])[0];
+                  var node = anchor;
+                  var suffix = '__body';
+                  while (node) {
+                    var id = node.id;
+                    var matched = id && EndsWith(id, suffix);
+                    if (matched) {
+                      var len = id.length - suffix.length;
+                      ShowByName(id.substring(0, len));
+                      if (anchor.scrollIntoView) {
+                        anchor.scrollIntoView();
+                      }
+
+                      return;
+                    }
+                    node = node.parentNode;
+                  }
+                }
+
+                window.onhashchange = RefreshVisibilityFromHashParam;
+
+                window.onload = function() {
+                  // if the URL contains "?showall=y", expand the details of all children
+                  var showHideAllRegex = new RegExp("[\\?&](showall)=([^&#]*)");
+                  var showHideAllValue = showHideAllRegex.exec(window.location.href);
+                  if (showHideAllValue != null) {
+                    if (showHideAllValue[2] == "y") {
+                      SetHiddenState(document.getElementsByTagName("body")[0].childNodes, 
+                          "inline", '▽');
+                    } else {
+                      SetHiddenState(document.getElementsByTagName("body")[0].childNodes, 
+                          "none", '▶');
+                    }
+                  }
+                  var showOneRegex = new RegExp("[\\?&](showone)=([^&#]*)");
+                  var showOneValue = showOneRegex.exec(window.location.href);
+                  if (showOneValue) {
+                    ShowHideByName(showOneValue[2]);
+                  }
+
+
+                  RefreshVisibilityFromHashParam();
+                }
+              </SCRIPT></HEAD>
+<BODY>
+<H1>Google Objective-C Style Guide</H1>
+
+<p align="right">
+
+Revision 2.59
+</p>
+
+
+
+<div align="right">
+  <address>
+    Mike Pinkerton<br>
+    Greg Miller <br>
+    Dave MacLachlan
+  </address>
+</div>
+
+<DIV style="margin-left: 50%; font-size: 75%;">
+<P>
+        Each style point has a summary for which additional information is available
+        by toggling the accompanying arrow button that looks this way:
+        <SPAN class="showhide_button" style="margin-left: 0; float: none">▶</SPAN>.
+        You may toggle all summaries with the big arrow button:
+      </P>
+<DIV style=" font-size: larger; margin-left: +2em;"><SPAN class="showhide_button" style="font-size: 180%; float: none" onclick="javascript:ShowHideAll()" name="show_hide_all_button" id="show_hide_all_button">▶</SPAN>
+        Toggle all summaries
+      </DIV>
+</DIV>
+<DIV class="toc">
+<DIV class="toc_title">Table of Contents</DIV>
+<TABLE>
+<TR valign="top" class="">
+<TD>
+<DIV class="toc_category"><A href="#Example">Example</A></DIV>
+</TD><TD>
+<DIV class="toc_stylepoint"></DIV>
+</TD>
+</TR>
+<TR valign="top" class="">
+<TD>
+<DIV class="toc_category"><A href="#Spacing_And_Formatting">Spacing And Formatting</A></DIV>
+</TD><TD>
+<DIV class="toc_stylepoint"><SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Spaces_vs._Tabs">Spaces vs. Tabs</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Line_Length">Line Length</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Method_Declarations_and_Definitions">Method Declarations and Definitions</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Method_Invocations">Method Invocations</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#@public_and_@private">@public and @private</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Exceptions">Exceptions</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Protocols">Protocols</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Blocks">Blocks</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Container_Literals">Container Literals</A></SPAN> </DIV>
+</TD>
+</TR>
+<TR valign="top" class="">
+<TD>
+<DIV class="toc_category"><A href="#Naming">Naming</A></DIV>
+</TD><TD>
+<DIV class="toc_stylepoint"><SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#File_Names">File Names</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Objective-C++">Objective-C++</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Class_Names">Class Names</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Category_Names">Category Names</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Objective-C_Method_Names">Objective-C Method Names</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Variable_Names">Variable Names</A></SPAN> </DIV>
+</TD>
+</TR>
+<TR valign="top" class="">
+<TD>
+<DIV class="toc_category"><A href="#Comments">Comments</A></DIV>
+</TD><TD>
+<DIV class="toc_stylepoint"><SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#File_Comments">File Comments</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Declaration_Comments">Declaration Comments</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Implementation_Comments">Implementation Comments</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Object_Ownership">Object Ownership</A></SPAN> </DIV>
+</TD>
+</TR>
+<TR valign="top" class="">
+<TD>
+<DIV class="toc_category"><A href="#Cocoa_and_Objective-C_Features">Cocoa and Objective-C Features</A></DIV>
+</TD><TD>
+<DIV class="toc_stylepoint"><SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Instance_Variables_In_Headers_Should_Be_@private">Instance Variables In Headers Should Be @private</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Identify_Designated_Initializer">Identify Designated Initializer</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Override_Designated_Initializer">Override Designated Initializer</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Overridden_NSObject_Method_Placement">Overridden NSObject Method Placement</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Initialization">Initialization</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Avoid_+new">Avoid +new</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Keep_the_Public_API_Simple">Keep the Public API Simple</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#_import_and__include">#import and #include</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Use_Root_Frameworks">Use Root Frameworks</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Prefer_To_autorelease_At_Time_of_Creation">Prefer To autorelease At Time of Creation</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Autorelease_Then_Retain">Autorelease Then Retain</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Avoid_Accessors_During_init_and_dealloc">Avoid Accessors During init and dealloc</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Dealloc_Instance_Variables_in_Declaration______________________Order">Dealloc Instance Variables in Declaration                      Order</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Setters_copy_NSStrings">Setters copy NSStrings</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Avoid_Throwing_Exceptions">Avoid Throwing Exceptions</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#nil_Checks">nil Checks</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#BOOL_Pitfalls">BOOL Pitfalls</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Properties">Properties</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Interfaces_Without_Instance_Variables">Interfaces Without Instance Variables</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Automatically_Synthesized_Instance_Variables">Automatically Synthesized Instance Variables</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Automatic_Reference_Counting__ARC_">Automatic Reference Counting (ARC)</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#NSNumber_Literals">NSNumber Literals</A></SPAN> </DIV>
+</TD>
+</TR>
+<TR valign="top" class="">
+<TD>
+<DIV class="toc_category"><A href="#Cocoa_Patterns">Cocoa Patterns</A></DIV>
+</TD><TD>
+<DIV class="toc_stylepoint"><SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Delegate_Pattern">Delegate Pattern</A></SPAN> <SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Model/View/Controller">Model/View/Controller</A></SPAN> </DIV>
+</TD>
+</TR>
+<TR valign="top" class="">
+<TD>
+<DIV class="toc_category"><A href="#Historical_Notes">Historical Notes</A></DIV>
+</TD><TD>
+<DIV class="toc_stylepoint"><SPAN style="padding-right: 1em; white-space:nowrap;" class=""><A href="#Trailing_vs_Leading_Underscores">Trailing vs Leading Underscores</A></SPAN> </DIV>
+</TD>
+</TR>
+</TABLE>
+</DIV>
+
+<DIV class="">
+<H2 name="Important_Note" id="Important_Note">Important Note</H2>
+  <DIV class="">
+<H3><A name="Displaying_Hidden_Details_in_this_Guide" id="Displaying_Hidden_Details_in_this_Guide">Displaying Hidden Details in this Guide</A></H3><SPAN class="link_button" id="link-Displaying_Hidden_Details_in_this_Guide__button" name="link-Displaying_Hidden_Details_in_this_Guide__button"><A href="?showone=Displaying_Hidden_Details_in_this_Guide#Displaying_Hidden_Details_in_this_Guide">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Displaying_Hidden_Details_in_this_Guide')" name="Displaying_Hidden_Details_in_this_Guide__button" id="Displaying_Hidden_Details_in_this_Guide__button">▶</SPAN>
+     <DIV style="display:inline;" class="">
+       This style guide contains many details that are initially
+       hidden from view.  They are marked by the triangle icon, which you
+       see here on your left.  Click it now.
+       You should see "Hooray" appear below.
+     </DIV>
+     <DIV class="">
+<DIV class="stylepoint_body" name="Displaying_Hidden_Details_in_this_Guide__body" id="Displaying_Hidden_Details_in_this_Guide__body" style="display: none">
+       <p>
+        Hooray!  Now you know you can expand points to get more
+        details.  Alternatively, there's an "expand all" at the
+        top of this document.
+       </p>
+     </DIV>
+</DIV>
+  </DIV>
+</DIV>
+
+<DIV class="">
+<H2 name="Background" id="Background">Background</H2>
+
+  <p>
+    Objective-C is a very dynamic, object-oriented extension of C.  It's
+    designed to be easy to use and read, while enabling sophisticated
+    object-oriented design. It is the primary development language for new
+    applications on Mac OS X and the iPhone.
+  </p>
+
+  <p>
+    Cocoa is one of the main application frameworks on Mac OS X. It is a
+    collection of Objective-C classes that provide for rapid development of
+    full-featured Mac OS X applications.
+  </p>
+
+  <p>
+    Apple has already written a very good, and widely accepted, coding guide
+    for Objective-C. Google has also written a similar guide for C++. This
+    Objective-C guide aims to be a very natural combination of Apple's and
+    Google's general recommendations. So, before reading this guide, please make
+    sure you've read:
+    <ul>
+      <li>
+        <a href="https://developer.apple.com/documentation/Cocoa/Conceptual/CodingGuidelines/index.html">
+          Apple's Cocoa Coding Guidelines
+        </a>
+      </li>
+      <li>
+        
+        <div>
+          <a href="https://google-styleguide.googlecode.com/svn/trunk/cppguide.xml">
+            Google's Open Source C++ Style Guide
+          </a>
+        </div>
+      </li>
+    </ul>
+  </p>
+
+  
+
+  <p>
+    <em>Note that all things that are banned in Google's C++ guide are also
+    banned in Objective-C++, unless explicitly noted in this document.</em>
+  </p>
+
+  <p>
+    The purpose of this document is to describe the Objective-C (and
+    Objective-C++) coding guidelines and practices that should be used for all
+    Mac OS X code. Many of these guidelines have evolved and been proven over
+    time on other projects and teams.
+    
+    Open-source projects developed by Google
+    conform to the requirements in this guide.
+  </p>
+
+  <p>
+    Google has already released open-source code that conforms to these
+    guidelines as part of the
+    <a href="https://code.google.com/p/google-toolbox-for-mac/">
+      Google Toolbox for Mac project
+    </a>
+    (abbreviated GTM throughout this document).
+    Code meant to be shared across different projects is a good candidate to
+    be included in this repository.
+  </p>
+
+  
+
+  <p>
+    Note that this guide is not an Objective-C tutorial. We assume that the
+    reader is familiar with the language. If you are new to Objective-C or
+    need a refresher, please read
+    <a href="https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html">
+      Programming with Objective-C
+    </a>.
+  </p>
+</DIV>
+
+
+<DIV class="">
+<H2 name="Example" id="Example">Example</H2>
+
+  <p>
+    They say an example is worth a thousand words so let's start off with an
+    example that should give you a feel for the style, spacing, naming, etc.
+  </p>
+
+  <p>
+    An example header file, demonstrating the correct commenting and spacing
+    for an <code>@interface</code> declaration
+  </p>
+
+<DIV class="">
+<PRE>#import &lt;Foundation/Foundation.h&gt;
+
+// A sample class demonstrating good Objective-C style. All interfaces,
+// categories, and protocols (read: all non-trivial top-level declarations
+// in a header) MUST be commented. Comments must also be adjacent to the
+// object they're documenting.
+//
+// (no blank line between this comment and the interface)
+@interface Foo : NSObject
+
+// Returns an autoreleased instance of Foo. See -initWithBar: for details
+// about |bar|.
++ (instancetype)fooWithBar:(NSString *)bar;
+
+// Designated initializer. |bar| is a thing that represents a thing that
+// does a thing.
+- (instancetype)initWithBar:(NSString *)bar;
+
+// Gets and sets |_bar|.
+- (NSString *)bar;
+- (void)setBar:(NSString *)bar;
+
+// Does some work with |blah| and returns YES if the work was completed
+// successfully, and NO otherwise.
+- (BOOL)doWorkWithBlah:(NSString *)blah;
+
+@end</PRE>
+</DIV>
+
+  <p>
+    An example source file, demonstrating the correct commenting and spacing
+    for the <code>@implementation</code> of an interface. It also includes the
+    reference implementations for important methods like getters and setters,
+    <code>init</code>, and <code>dealloc</code>.
+  </p>
+
+  <DIV class="">
+<PRE>#import "Foo.h"
+
+
+@implementation Foo {
+  NSString *_bar;
+  NSString *_foo;
+}
+
++ (instancetype)fooWithBar:(NSString *)bar {
+  return [[[self alloc] initWithBar:bar] autorelease];
+}
+
+// Must always override super's designated initializer.
+- (instancetype)init {
+  return [self initWithBar:nil];
+}
+
+- (instancetype)initWithBar:(NSString *)bar {
+  if ((self = [super init])) {
+    _bar = [bar copy];
+    _bam = [[NSString alloc] initWithFormat:@"hi %d", 3];
+  }
+  return self;
+}
+
+- (void)dealloc {
+  [_bar release];
+  [_bam release];
+  [super dealloc];
+}
+
+- (NSString *)bar {
+  return _bar;
+}
+
+- (void)setBar:(NSString *)bar {
+  [_bar autorelease];
+  _bar = [bar copy];
+}
+
+- (BOOL)doWorkWithBlah:(NSString *)blah {
+  // ...
+  return NO;
+}
+
+@end</PRE>
+</DIV>
+
+  <p>
+    Blank lines before and after <code>@interface</code>,
+    <code>@implementation</code>, and <code>@end</code> are optional. If your
+    <code>@interface</code> declares instance variables, a blank
+    line should come after the closing brace (<code>}</code>).
+  <p>
+  </p>
+    Unless an interface or implementation is very short, such as when declaring
+    a handful of private methods or a bridge class, adding blank lines usually
+    helps readability.
+  </p>
+
+</DIV>
+
+<DIV class="">
+<H2 name="Spacing_And_Formatting" id="Spacing_And_Formatting">Spacing And Formatting</H2>
+
+  <DIV class="">
+<H3><A name="Spaces_vs._Tabs" id="Spaces_vs._Tabs">Spaces vs. Tabs</A></H3><SPAN class="link_button" id="link-Spaces_vs._Tabs__button" name="link-Spaces_vs._Tabs__button"><A href="?showone=Spaces_vs._Tabs#Spaces_vs._Tabs">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Spaces_vs._Tabs')" name="Spaces_vs._Tabs__button" id="Spaces_vs._Tabs__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Use only spaces, and indent 2 spaces at a time.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Spaces_vs._Tabs__body" id="Spaces_vs._Tabs__body" style="display: none">
+      <p>
+        We use spaces for indentation. Do not use tabs in your code.
+        You should set your editor to emit spaces when you hit the tab
+        key.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Line_Length" id="Line_Length">Line Length</A></H3><SPAN class="link_button" id="link-Line_Length__button" name="link-Line_Length__button"><A href="?showone=Line_Length#Line_Length">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Line_Length')" name="Line_Length__button" id="Line_Length__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      The maximum line length for Objective-C and Objective-C++ files is 100
+      columns. Projects may opt to use an 80 column limit for consistency with
+      the C++ style guide.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Line_Length__body" id="Line_Length__body" style="display: none">
+      <p>
+        You can make violations easier to spot by enabling <i>Preferences &gt;
+        Text Editing &gt; Page guide at column: 100</i> in Xcode.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Method_Declarations_and_Definitions" id="Method_Declarations_and_Definitions">Method Declarations and Definitions</A></H3><SPAN class="link_button" id="link-Method_Declarations_and_Definitions__button" name="link-Method_Declarations_and_Definitions__button"><A href="?showone=Method_Declarations_and_Definitions#Method_Declarations_and_Definitions">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Method_Declarations_and_Definitions')" name="Method_Declarations_and_Definitions__button" id="Method_Declarations_and_Definitions__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      One space should be used between the <code>-</code> or <code>+</code>
+      and the return type, and no spacing in the parameter list except between
+      parameters.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Method_Declarations_and_Definitions__body" id="Method_Declarations_and_Definitions__body" style="display: none">
+      <p>
+        Methods should look like this:
+      </p>
+      <DIV class="">
+<PRE>- (void)doSomethingWithString:(NSString *)theString {
+  ...
+}</PRE>
+</DIV>
+      <p>
+        The spacing before the asterisk is optional. When adding new code,
+        be consistent with the surrounding file's style.
+      </p>
+      <p>
+        If you have too many parameters to fit on one line, giving each its
+        own line is preferred. If multiple lines are used, align each using
+        the colon before the parameter.
+      </p>
+      <DIV class="">
+<PRE>- (void)doSomethingWith:(GTMFoo *)theFoo
+                   rect:(NSRect)theRect
+               interval:(float)theInterval {
+  ...
+}</PRE>
+</DIV>
+      <p>
+        When the first keyword is shorter than the others, indent the later
+        lines by at least four spaces, maintaining colon alignment:
+      </p>
+      <DIV class="">
+<PRE>- (void)short:(GTMFoo *)theFoo
+          longKeyword:(NSRect)theRect
+    evenLongerKeyword:(float)theInterval
+                error:(NSError **)theError {
+  ...
+}</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Method_Invocations" id="Method_Invocations">Method Invocations</A></H3><SPAN class="link_button" id="link-Method_Invocations__button" name="link-Method_Invocations__button"><A href="?showone=Method_Invocations#Method_Invocations">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Method_Invocations')" name="Method_Invocations__button" id="Method_Invocations__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Method invocations should be formatted much like method declarations.
+      When there's a choice of formatting styles, follow the convention
+      already used in a given source file.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Method_Invocations__body" id="Method_Invocations__body" style="display: none">
+      <p>
+        Invocations should have all arguments on one line:
+      </p>
+      <DIV class="">
+<PRE>[myObject doFooWith:arg1 name:arg2 error:arg3];</PRE>
+</DIV>
+      <p>
+        or have one argument per line, with colons aligned:
+      </p>
+      <DIV class="">
+<PRE>[myObject doFooWith:arg1
+               name:arg2
+              error:arg3];</PRE>
+</DIV>
+      <p>
+        Don't use any of these styles:
+      </p>
+      <DIV class="">
+<PRE class="badcode">[myObject doFooWith:arg1 name:arg2  // some lines with &gt;1 arg
+              error:arg3];
+
+[myObject doFooWith:arg1
+               name:arg2 error:arg3];
+
+[myObject doFooWith:arg1
+          name:arg2  // aligning keywords instead of colons
+          error:arg3];</PRE>
+</DIV>
+
+      <p>
+        As with declarations and definitions, when the first keyword is shorter
+        than the others, indent the later lines by at least four spaces,
+        maintaining colon alignment:
+      </p>
+      <DIV class="">
+<PRE>[myObj short:arg1
+          longKeyword:arg2
+    evenLongerKeyword:arg3
+                error:arg4];</PRE>
+</DIV>
+      <p>
+        Invocations containing inlined <a href="#Blocks">blocks</a> may have
+        their segments left-aligned at a four space indent.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="@public_and_@private" id="@public_and_@private">@public and @private</A></H3><SPAN class="link_button" id="link-@public_and_@private__button" name="link-@public_and_@private__button"><A href="?showone=@public_and_@private#@public_and_@private">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('@public_and_@private')" name="@public_and_@private__button" id="@public_and_@private__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      The <code>@public</code> and <code>@private</code> access modifiers
+      should be indented by 1 space.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="@public_and_@private__body" id="@public_and_@private__body" style="display: none">
+      <p>
+        This is similar to <code>public</code>, <code>private</code>, and
+        <code>protected</code> in C++.
+      </p>
+      <DIV class="">
+<PRE>@interface MyClass : NSObject {
+ @public
+  ...
+ @private
+  ...
+}
+@end</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Exceptions" id="Exceptions">Exceptions</A></H3><SPAN class="link_button" id="link-Exceptions__button" name="link-Exceptions__button"><A href="?showone=Exceptions#Exceptions">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Exceptions')" name="Exceptions__button" id="Exceptions__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Format exceptions with each <code>@</code> label on its own line and a
+      space between the <code>@</code> label and the opening brace
+      (<code>{</code>), as well as between the <code>@catch</code> and the
+      caught object declaration.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Exceptions__body" id="Exceptions__body" style="display: none">
+      <p>
+        If you must use Obj-C exceptions, format them as follows.  However, see
+        <a href="#Avoid_Throwing_Exceptions">Avoid Throwing Exceptions</a> for
+        reasons why you should not be using exceptions.
+      </p>
+      <DIV class="">
+<PRE>@try {
+  foo();
+}
+@catch (NSException *ex) {
+  bar(ex);
+}
+@finally {
+  baz();
+}</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Protocols" id="Protocols">Protocols</A></H3><SPAN class="link_button" id="link-Protocols__button" name="link-Protocols__button"><A href="?showone=Protocols#Protocols">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Protocols')" name="Protocols__button" id="Protocols__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      There should not be a space between the type identifier and the name
+      of the protocol encased in angle brackets.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Protocols__body" id="Protocols__body" style="display: none">
+      <p>
+        This applies to class declarations, instance variables, and method
+        declarations. For example:
+      </p>
+      <DIV class="">
+<PRE>@interface MyProtocoledClass : NSObject&lt;NSWindowDelegate&gt; {
+ @private
+  id&lt;MyFancyDelegate&gt; _delegate;
+}
+- (void)setDelegate:(id&lt;MyFancyDelegate&gt;)aDelegate;
+@end</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Blocks" id="Blocks">Blocks</A></H3><SPAN class="link_button" id="link-Blocks__button" name="link-Blocks__button"><A href="?showone=Blocks#Blocks">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Blocks')" name="Blocks__button" id="Blocks__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Code inside blocks should be indented four spaces.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Blocks__body" id="Blocks__body" style="display: none">
+      <p>
+        There are several appropriate style rules, depending on how long the
+        block is:
+      </p>
+      <ul>
+        <li>If the block can fit on one line, no wrapping is necessary.</li>
+        <li>
+          If it has to wrap, the closing brace should line up with the first
+          character of the line on which the block is declared.
+        </li>
+        <li>Code within the block should be indented four spaces.</li>
+        <li>
+          If the block is large, e.g. more than 20 lines, it is recommended to
+          move it out-of-line into a local variable.
+        </li>
+        <li>
+          If the block takes no parameters, there are no spaces between the
+          characters <code>^{</code>. If the block takes parameters, there is no
+          space between the <code>^(</code> characters, but there is one space
+          between the <code>) {</code> characters.
+        </li>
+        <li>
+          Invocations containing inlined blocks may have their segments
+          left-aligned at a four-space indent. This helps when invocations
+          contain multiple inlined blocks.
+        </li>
+        <li>
+          Two space indents inside blocks are also allowed, but should only
+          be used when it's consistent with the rest of the project's code.
+        </li>
+      </ul>
+      <DIV class="">
+<PRE>// The entire block fits on one line.
+[operation setCompletionBlock:^{ [self onOperationDone]; }];
+
+// The block can be put on a new line, indented four spaces, with the
+// closing brace aligned with the first character of the line on which
+// block was declared.
+[operation setCompletionBlock:^{
+    [self.delegate newDataAvailable];
+}];
+
+// Using a block with a C API follows the same alignment and spacing
+// rules as with Objective-C.
+dispatch_async(_fileIOQueue, ^{
+    NSString* path = [self sessionFilePath];
+    if (path) {
+      // ...
+    }
+});
+
+// An example where the parameter wraps and the block declaration fits
+// on the same line. Note the spacing of |^(SessionWindow *window) {|
+// compared to |^{| above.
+[[SessionService sharedService]
+    loadWindowWithCompletionBlock:^(SessionWindow *window) {
+        if (window) {
+          [self windowDidLoad:window];
+        } else {
+          [self errorLoadingWindow];
+        }
+    }];
+
+// An example where the parameter wraps and the block declaration does
+// not fit on the same line as the name.
+[[SessionService sharedService]
+    loadWindowWithCompletionBlock:
+        ^(SessionWindow *window) {
+            if (window) {
+              [self windowDidLoad:window];
+            } else {
+              [self errorLoadingWindow];
+            }
+        }];
+
+// Large blocks can be declared out-of-line.
+void (^largeBlock)(void) = ^{
+    // ...
+};
+[_operationQueue addOperationWithBlock:largeBlock];
+
+// An example with multiple inlined blocks in one invocation.
+[myObject doSomethingWith:arg1
+    firstBlock:^(Foo *a) {
+        // ...
+    }
+    secondBlock:^(Bar *b) {
+        // ...
+    }];</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Container_Literals" id="Container_Literals">Container Literals</A></H3><SPAN class="link_button" id="link-Container_Literals__button" name="link-Container_Literals__button"><A href="?showone=Container_Literals#Container_Literals">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Container_Literals')" name="Container_Literals__button" id="Container_Literals__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      For projects using Xcode 4.4 or later and clang, the use of container
+      (array and dictionary) literals is encouraged. If split across multiple
+      lines, the contents should be indented two spaces.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Container_Literals__body" id="Container_Literals__body" style="display: none">
+      <p>
+        If the collection fits on one line, put a single space after the opening
+        and before the closing brackets.
+      </p>
+      <DIV class="">
+<PRE>NSArray* array = @[ [foo description], @"Another String", [bar description] ];
+
+NSDictionary* dict = @{ NSForegroundColorAttributeName : [NSColor redColor] };</PRE>
+</DIV>
+      <p>
+        Not:
+      </p>
+      <DIV class="">
+<PRE class="badcode">NSArray* array = @[[foo description], [bar description]];
+
+NSDictionary* dict = @{NSForegroundColorAttributeName: [NSColor redColor]};</PRE>
+</DIV>
+
+      <p>
+        If the collection spans more than a single line, place the opening
+        bracket on the same line as the declaration, indent the body by two
+        spaces, and place the closing bracket on a new line that is indented to
+        the same level as the opening bracket.
+      </p>
+      <DIV class="">
+<PRE>NSArray* array = @[
+  @"This",
+  @"is",
+  @"an",
+  @"array"
+];
+
+NSDictionary* dictionary = @{
+  NSFontAttributeName : [NSFont fontWithName:@"Helvetica-Bold" size:12],
+  NSForegroundColorAttributeName : fontColor
+};</PRE>
+</DIV>
+
+      <p>
+        For dictionary literals, there should be one space before the colon and
+        at least one space after it (to optionally align the values).
+      </p>
+      <DIV class="">
+<PRE>NSDictionary* option1 = @{
+  NSFontAttributeName : [NSFont fontWithName:@"Helvetica-Bold" size:12],
+  NSForegroundColorAttributeName : fontColor
+};
+
+NSDictionary* option2 = @{
+  NSFontAttributeName :            [NSFont fontWithName:@"Arial" size:12],
+  NSForegroundColorAttributeName : fontColor
+};</PRE>
+</DIV>
+      <p>
+        The following are all incorrect:
+      </p>
+      <DIV class="">
+<PRE class="badcode">// There should be a space before the colon.
+NSDictionary* wrong = @{
+  AKey:       @"b",
+  BLongerKey: @"c",
+};
+
+// The items should each be on a new line, or the entire expression
+// should fit on one line.
+NSDictionary* alsoWrong= @{ AKey : @"a",
+                            BLongerKey : @"b" };
+
+// There should be no variable space before the colon, only after.
+NSDictionary* stillWrong = @{
+  AKey       : @"b",
+  BLongerKey : @"c",
+};</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+</DIV>
+
+<DIV class="">
+<H2 name="Naming" id="Naming">Naming</H2>
+
+  <p>
+    Naming rules are very important in maintainable code. Objective-C method
+    names tend to be very long, but this has the benefit that a block of code
+    can almost read like prose, thus rendering many comments unnecessary. </p>
+    <p> When writing pure Objective-C code, we mostly follow standard <a href="https://developer.apple.com/documentation/Cocoa/Conceptual/CodingGuidelines/CodingGuidelines.html">Objective-C
+    naming rules</a>. These naming guidelines may differ
+    significantly from those outlined in the C++ style guide. For example,
+    Google's C++ style guide recommends the use of underscores between words
+    in variable names, whereas this guide recommends the use of intercaps,
+    which is standard in the Objective-C community.
+  </p>
+  <p>
+    Any class, category, method, or variable name may use all capitals for
+    <a href="https://en.wikipedia.org/wiki/Initialism">initialisms</a>
+    within the name. This follows Apple's standard of using all capitals
+    within a name for initialisms such as URL, TIFF, and EXIF.
+  </p>
+  <p>
+    When writing Objective-C++, however, things are not so cut and dry. Many
+    projects need to implement cross-platform C++ APIs with some Objective-C
+    or Cocoa, or bridge between a C++ back-end and a native Cocoa front-end.
+    This leads to situations where the two guides are directly at odds.
+  </p>
+  <p>
+    Our solution is that the style follows that of the method/function being
+    implemented. If you're in an <code>@implementation</code> block, use the
+    Objective-C naming rules. If you're implementing a method for a C++
+    <code>class</code>, use the C++ naming rules. This avoids the situation
+    where instance variable and local variable naming rules are mixed within a
+    single function, which would be a serious detriment to readability.
+  </p>
+
+  <DIV class="">
+<H3><A name="File_Names" id="File_Names">File Names</A></H3><SPAN class="link_button" id="link-File_Names__button" name="link-File_Names__button"><A href="?showone=File_Names#File_Names">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('File_Names')" name="File_Names__button" id="File_Names__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      File names should reflect the name of the class implementation that
+      they contain—including case. Follow the convention that your
+      
+      project
+      uses.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="File_Names__body" id="File_Names__body" style="display: none">
+      <p>
+        File extensions should be as follows:
+      </p>
+      <table>
+        <tr>
+          <td><code>.h</code></td>
+          <td>C/C++/Objective-C header file</td>
+        </tr>
+        <tr>
+          <td><code>.m</code></td>
+          <td>Objective-C implementation file</td>
+        </tr>
+        <tr>
+          <td><code>.mm</code></td>
+          <td>Objective-C++ implementation file</td>
+        </tr>
+        <tr>
+          <td><code>.cc</code></td>
+          <td>Pure C++ implementation file</td>
+        </tr>
+        <tr>
+          <td><code>.c</code></td>
+          <td>C implementation file</td>
+        </tr>
+      </table>
+      <p>
+        File names for categories should include the name of the class being
+        extended, e.g. <code>GTMNSString+Utils.h</code> or
+        <code>GTMNSTextView+Autocomplete.h</code>
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Objective-C++" id="Objective-C++">Objective-C++</A></H3><SPAN class="link_button" id="link-Objective-C++__button" name="link-Objective-C++__button"><A href="?showone=Objective-C++#Objective-C++">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Objective-C++')" name="Objective-C++__button" id="Objective-C++__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Within a source file, Objective-C++ follows the style of the
+      function/method you're implementing.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Objective-C++__body" id="Objective-C++__body" style="display: none">
+      <p>
+        In order to minimize clashes between the differing naming styles when
+        mixing Cocoa/Objective-C and C++, follow the style of the method being
+        implemented. If you're in an <code>@implementation</code> block, use
+        the Objective-C naming rules. If you're implementing a method for a
+        C++ <code>class</code>, use the C++ naming rules.
+      </p>
+      <DIV class="">
+<PRE>// file: cross_platform_header.h
+
+class CrossPlatformAPI {
+ public:
+  ...
+  int DoSomethingPlatformSpecific();  // impl on each platform
+ private:
+  int an_instance_var_;
+};
+
+// file: mac_implementation.mm
+#include "cross_platform_header.h"
+
+// A typical Objective-C class, using Objective-C naming.
+@interface MyDelegate : NSObject {
+ @private
+  int _instanceVar;
+  CrossPlatformAPI* _backEndObject;
+}
+- (void)respondToSomething:(id)something;
+@end
+@implementation MyDelegate
+- (void)respondToSomething:(id)something {
+  // bridge from Cocoa through our C++ backend
+  _instanceVar = _backEndObject-&gt;DoSomethingPlatformSpecific();
+  NSString* tempString = [NSString stringWithFormat:@"%d", _instanceVar];
+  NSLog(@"%@", tempString);
+}
+@end
+
+// The platform-specific implementation of the C++ class, using
+// C++ naming.
+int CrossPlatformAPI::DoSomethingPlatformSpecific() {
+  NSString* temp_string = [NSString stringWithFormat:@"%d", an_instance_var_];
+  NSLog(@"%@", temp_string);
+  return [temp_string intValue];
+}</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Class_Names" id="Class_Names">Class Names</A></H3><SPAN class="link_button" id="link-Class_Names__button" name="link-Class_Names__button"><A href="?showone=Class_Names#Class_Names">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Class_Names')" name="Class_Names__button" id="Class_Names__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Class names (along with category and protocol names) should start as
+      uppercase and use mixed case to delimit words.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Class_Names__body" id="Class_Names__body" style="display: none">
+      <p>
+         When designing code to be shared across multiple applications,
+         prefixes are acceptable and recommended (e.g. <code>GTMSendMessage</code>).
+         Prefixes are also recommended for classes of large applications that
+         depend on external libraries.
+      </p>
+      
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Category_Names" id="Category_Names">Category Names</A></H3><SPAN class="link_button" id="link-Category_Names__button" name="link-Category_Names__button"><A href="?showone=Category_Names#Category_Names">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Category_Names')" name="Category_Names__button" id="Category_Names__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Category names should start with a 2 or 3 character prefix
+      identifying the category as part of a project or open for general
+      use. The category name should incorporate the name of the class it's
+      extending.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Category_Names__body" id="Category_Names__body" style="display: none">
+      <p>
+        For example, if we want to create a category on <code>NSString</code>
+        for parsing, we would put the category in a file named
+        <code>GTMNSString+Parsing.h</code>, and the category itself would be
+        named <code>GTMStringParsingAdditions</code> (yes, we know the file
+        name and the category name do not match, but this file could have many
+        separate categories related to parsing). Methods in that category
+        should share the prefix (<code>gtm_myCategoryMethodOnAString:</code>)
+        in order to prevent collisions in Objective-C which only has a single
+        namespace. If the code isn't meant to be shared and/or doesn't run in
+        a different address-space, the method naming isn't quite as
+        important.
+      </p>
+      <p>
+        There should be a single space between the class name and the opening
+        parenthesis of the category.
+      </p>
+      <DIV class="">
+<PRE>// Extending a framework class:
+@interface NSString (GTMStringParsingAdditions)
+- (NSString *)gtm_foobarString;
+@end
+
+// Making your methods and properties private:
+@interface FoobarViewController ()
+@property(nonatomic, retain) NSView *dongleView;
+- (void)performLayout;
+@end</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Objective-C_Method_Names" id="Objective-C_Method_Names">Objective-C Method Names</A></H3><SPAN class="link_button" id="link-Objective-C_Method_Names__button" name="link-Objective-C_Method_Names__button"><A href="?showone=Objective-C_Method_Names#Objective-C_Method_Names">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Objective-C_Method_Names')" name="Objective-C_Method_Names__button" id="Objective-C_Method_Names__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Method names should start as lowercase and then use mixed case.
+      Each named parameter should also start as lowercase.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Objective-C_Method_Names__body" id="Objective-C_Method_Names__body" style="display: none">
+      <p>
+        The method name should read like a sentence if possible, meaning you
+        should choose parameter names that flow with the method name. (e.g.
+        <code>convertPoint:fromRect:</code> or
+        <code>replaceCharactersInRange:withString:</code>). See <a href="https://developer.apple.com/documentation/Cocoa/Conceptual/CodingGuidelines/Articles/NamingMethods.html#//apple_ref/doc/uid/20001282-BCIGIJJF">Apple's
+        Guide to Naming Methods</a> for more details.
+      </p>
+      <p>
+        Accessor methods should be named the same as the variable they're
+        "getting", but they should <em>not</em> be prefixed with the word
+        "get". For example:
+        <DIV class="">
+<PRE class="badcode">- (id)getDelegate;  // AVOID</PRE>
+</DIV>
+        <DIV class="">
+<PRE>- (id)delegate;    // GOOD</PRE>
+</DIV>
+      </p>
+      <p>
+        This is for Objective-C methods only. C++ method names and functions
+        continue to follow the rules set in the C++ style guide.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Variable_Names" id="Variable_Names">Variable Names</A></H3><SPAN class="link_button" id="link-Variable_Names__button" name="link-Variable_Names__button"><A href="?showone=Variable_Names#Variable_Names">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Variable_Names')" name="Variable_Names__button" id="Variable_Names__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Variables names start with a lowercase and use mixed case to delimit
+      words. Instance variables have leading underscores. For example:
+      <var>myLocalVariable</var>, <var>_myInstanceVariable</var>.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Variable_Names__body" id="Variable_Names__body" style="display: none">
+      <P class=""><SPAN class="stylepoint_subsection">Common Variable Names</SPAN>
+        <p>
+          Do <em>not</em> use Hungarian notation for syntactic attributes,
+          such as the static type of a variable (int or pointer). Give as
+          descriptive a name as possible, within reason. Don't worry about
+          saving horizontal space as it is far more important to make your
+          code immediately understandable by a new reader. For example:
+        </p>
+        <DIV class="">
+<PRE class="badcode">int w;
+int nerr;
+int nCompConns;
+tix = [[NSMutableArray alloc] init];
+obj = [someObject object];
+p = [network port];</PRE>
+</DIV>
+        <DIV class="">
+<PRE>int numErrors;
+int numCompletedConnections;
+tickets = [[NSMutableArray alloc] init];
+userInfo = [someObject object];
+port = [network port];</PRE>
+</DIV>
+      </P>
+
+      <P class=""><SPAN class="stylepoint_subsection">Instance Variables</SPAN>
+        <p>
+          Instance variables are mixed case and should be prefixed with an
+          underscore e.g. <var>_usernameTextField</var>. Note that historically
+          the convention was to put the underscore at the end of the name, and
+          projects may opt to continue using trailing underscores in new code
+          in order to maintain consistency within their codebase (see the
+          Historical Notes section).  It is recommended you leave old
+          code as-is, unless doing so would create inconsistency within a class.
+        </p>
+      </P>
+
+      <P class=""><SPAN class="stylepoint_subsection">Constants</SPAN>
+        <p>
+          Constant names (#defines, enums, const local variables, etc.) should
+          start with a lowercase <var>k</var> and then use mixed case to
+          delimit words.  For example:
+        </p>
+        <DIV class="">
+<PRE>const int kNumberOfFiles = 12;
+NSString *const kUserKey = @"kUserKey";
+enum DisplayTinge {
+  kDisplayTingeGreen = 1,
+  kDisplayTingeBlue = 2
+};</PRE>
+</DIV>
+        <p>
+          Because Objective-C does not provide namespacing, constants with global
+          scope should have an appropriate prefix to minimize the chance of name
+          collision, typically like <var>kClassNameFoo</var>.
+        </p>
+      </P>
+    </DIV>
+</DIV>
+  </DIV>
+
+</DIV>
+
+<DIV class="">
+<H2 name="Comments" id="Comments">Comments</H2>
+
+  <p>
+    Though a pain to write, they are absolutely vital to keeping our code
+    readable. The following rules describe what you should comment and where.
+    But remember: while comments are very important, the best code is
+    self-documenting. Giving sensible names to types and variables is much
+    better than using obscure names and then trying to explain them through
+    comments.
+  </p>
+  <p>
+    When writing your comments, write for your audience: the next
+    
+    contributor
+    who will need to understand your code.  Be generous—the next
+    one may be you!
+  </p>
+  <p>
+    Remember that all of the rules and conventions listed in the C++ Style
+    Guide are in effect here, with a few additional points, below.
+  </p>
+
+  <DIV class="">
+<H3><A name="File_Comments" id="File_Comments">File Comments</A></H3><SPAN class="link_button" id="link-File_Comments__button" name="link-File_Comments__button"><A href="?showone=File_Comments#File_Comments">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('File_Comments')" name="File_Comments__button" id="File_Comments__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      A file may optionally start with a description of its contents.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="File_Comments__body" id="File_Comments__body" style="display: none">
+      
+      <p>
+        Every file should contain the following items, in order:
+        <ul>
+          <li>license boilerplate if neccessary. Choose the appropriate
+              boilerplate for the license used by the project (e.g.
+              Apache 2.0, BSD, LGPL, GPL).</li>
+          <li>a basic description of the contents of the file if necessary.</li>
+        </ul>
+      </p>
+      <p>
+        If you make significant changes to a file with an author line,
+        consider deleting the author line since revision history already
+        provides a more detailed and accurate record of authorship.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Declaration_Comments" id="Declaration_Comments">Declaration Comments</A></H3><SPAN class="link_button" id="link-Declaration_Comments__button" name="link-Declaration_Comments__button"><A href="?showone=Declaration_Comments#Declaration_Comments">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Declaration_Comments')" name="Declaration_Comments__button" id="Declaration_Comments__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Every interface, category, and protocol declaration should have an
+      accompanying comment describing its purpose and how it fits into the
+      larger picture.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Declaration_Comments__body" id="Declaration_Comments__body" style="display: none">
+      <DIV class="">
+<PRE>// A delegate for NSApplication to handle notifications about app
+// launch and shutdown. Owned by the main app controller.
+@interface MyAppDelegate : NSObject {
+  ...
+}
+@end</PRE>
+</DIV>
+      <p>
+        If you have already described an interface in detail in the
+        comments at the top of your file feel free to simply state
+        "See comment at top of file for a complete description", but
+        be sure to have some sort of comment.
+      </p>
+      <p>
+        Additionally, each method in the public interface should have a
+        comment explaining its function, arguments, return value, and any
+        side effects.
+      </p>
+      <p>
+        Document the synchronization assumptions the class makes, if
+        any. If an instance of the class can be accessed by multiple
+        threads, take extra care to document the rules and invariants
+        surrounding multithreaded use.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Implementation_Comments" id="Implementation_Comments">Implementation Comments</A></H3><SPAN class="link_button" id="link-Implementation_Comments__button" name="link-Implementation_Comments__button"><A href="?showone=Implementation_Comments#Implementation_Comments">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Implementation_Comments')" name="Implementation_Comments__button" id="Implementation_Comments__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Use vertical bars to quote variable names and symbols in comments rather
+      than quotes or naming the symbol inline.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Implementation_Comments__body" id="Implementation_Comments__body" style="display: none">
+      <p>
+        This helps eliminate ambiguity, especially when the symbol is a common
+        word that might make the sentence read like it was poorly constructed.
+        E.g. for a symbol "count":
+      </p>
+      <DIV class="">
+<PRE>// Sometimes we need |count| to be less than zero.</PRE>
+</DIV>
+      <p>
+        or when quoting something which already contains quotes
+      </p>
+      <DIV class="">
+<PRE>// Remember to call |StringWithoutSpaces("foo bar baz")|</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Object_Ownership" id="Object_Ownership">Object Ownership</A></H3><SPAN class="link_button" id="link-Object_Ownership__button" name="link-Object_Ownership__button"><A href="?showone=Object_Ownership#Object_Ownership">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Object_Ownership')" name="Object_Ownership__button" id="Object_Ownership__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Make the pointer ownership model as explicit as possible when it falls
+      outside the most common Objective-C usage idioms.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Object_Ownership__body" id="Object_Ownership__body" style="display: none">
+      <P class=""><SPAN class="stylepoint_subsection">Manual Reference Counting</SPAN>
+        <p>
+          Instance variables which are pointers to objects derived from NSObject
+          are presumed to be retained, and should be either commented as weak or
+          declared with the __weak lifetime qualifier when applicable.
+          Similarly, declared properties must specify an assign property
+          attribute if they are not retained by the class.  An exception is
+          instance variables labeled as IBOutlets in desktop Mac software,
+          which are presumed to not be retained.
+        </p>
+        <p>
+          Where instance variables are pointers to Core Foundation, C++, and
+          other non-Objective-C objects, they should always be declared with
+          <code>strong</code> and <code>weak</code> comments to indicate which
+          pointers are and are not retained. Core Foundation and other
+          non-Objective-C object pointers require explicit memory management,
+          even when building for automatic reference counting or garbage
+          collection.
+        </p>
+        <p>
+          Examples of strong and weak declarations:
+          <DIV class="">
+<PRE>@interface MyDelegate : NSObject {
+ @private
+  IBOutlet NSButton *_okButton;  // Normal NSControl; implicitly weak on Mac only
+
+  AnObjcObject* _doohickey;  // My doohickey
+  __weak MyObjcParent *_parent;  // So we can send msgs back (owns me)
+
+  // non-NSObject pointers...
+  CWackyCPPClass *_wacky;  // Strong, some cross-platform object
+  CFDictionaryRef *_dict;  // Strong
+}
+@property(strong, nonatomic) NSString *doohickey;
+@property(weak, nonatomic) NSString *parent;
+@end</PRE>
+</DIV>
+        </p>
+      </P>
+      <P class=""><SPAN class="stylepoint_subsection">Automatic Reference Counting</SPAN>
+        <p>
+          Object ownership and lifetime are explicit when using ARC, so no
+          additional comments are required.
+        </p>
+      </P>
+    </DIV>
+</DIV>
+  </DIV>
+
+</DIV>
+
+<DIV class="">
+<H2 name="Cocoa_and_Objective-C_Features" id="Cocoa_and_Objective-C_Features">Cocoa and Objective-C Features</H2>
+
+  <DIV class="">
+<H3><A name="Instance_Variables_In_Headers_Should_Be_@private" id="Instance_Variables_In_Headers_Should_Be_@private">Instance Variables In Headers Should Be @private</A></H3><SPAN class="link_button" id="link-Instance_Variables_In_Headers_Should_Be_@private__button" name="link-Instance_Variables_In_Headers_Should_Be_@private__button"><A href="?showone=Instance_Variables_In_Headers_Should_Be_@private#Instance_Variables_In_Headers_Should_Be_@private">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Instance_Variables_In_Headers_Should_Be_@private')" name="Instance_Variables_In_Headers_Should_Be_@private__button" id="Instance_Variables_In_Headers_Should_Be_@private__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Instance variables should typically be declared in implementation files
+      or auto-synthesized by properties.  When ivars are declared in a header
+      file, they should be marked <code>@private</code>.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Instance_Variables_In_Headers_Should_Be_@private__body" id="Instance_Variables_In_Headers_Should_Be_@private__body" style="display: none">
+      <DIV class="">
+<PRE>@interface MyClass : NSObject {
+ @private
+  id _myInstanceVariable;
+}
+@end</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Identify_Designated_Initializer" id="Identify_Designated_Initializer">Identify Designated Initializer</A></H3><SPAN class="link_button" id="link-Identify_Designated_Initializer__button" name="link-Identify_Designated_Initializer__button"><A href="?showone=Identify_Designated_Initializer#Identify_Designated_Initializer">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Identify_Designated_Initializer')" name="Identify_Designated_Initializer__button" id="Identify_Designated_Initializer__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Comment and clearly identify your designated initializer.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Identify_Designated_Initializer__body" id="Identify_Designated_Initializer__body" style="display: none">
+      <p>
+        It is important for those who might be subclassing your class that the
+        designated initializer be clearly identified. That way, they only need
+        to subclass a single initializer (of potentially several) to guarantee
+        their subclass' initializer is called. It also helps those debugging
+        your class in the future understand the flow of initialization code if
+        they need to step through it.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Override_Designated_Initializer" id="Override_Designated_Initializer">Override Designated Initializer</A></H3><SPAN class="link_button" id="link-Override_Designated_Initializer__button" name="link-Override_Designated_Initializer__button"><A href="?showone=Override_Designated_Initializer#Override_Designated_Initializer">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Override_Designated_Initializer')" name="Override_Designated_Initializer__button" id="Override_Designated_Initializer__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      When writing a subclass that requires an <code>init...</code> method,
+      make <i>sure</i> you override the superclass' designated initializer.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Override_Designated_Initializer__body" id="Override_Designated_Initializer__body" style="display: none">
+      <p>
+        If you fail to override the superclass' designated initializer, your
+        initializer may not be called in all cases, leading to subtle and
+        very difficult to find bugs.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Overridden_NSObject_Method_Placement" id="Overridden_NSObject_Method_Placement">Overridden NSObject Method Placement</A></H3><SPAN class="link_button" id="link-Overridden_NSObject_Method_Placement__button" name="link-Overridden_NSObject_Method_Placement__button"><A href="?showone=Overridden_NSObject_Method_Placement#Overridden_NSObject_Method_Placement">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Overridden_NSObject_Method_Placement')" name="Overridden_NSObject_Method_Placement__button" id="Overridden_NSObject_Method_Placement__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      It is strongly recommended and typical practice to place overridden
+      methods of <code>NSObject</code> at the top of an
+      <code>@implementation</code>.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Overridden_NSObject_Method_Placement__body" id="Overridden_NSObject_Method_Placement__body" style="display: none">
+      <p>
+        This commonly applies (but is not limited) to the <code>init...</code>,
+        <code>copyWithZone:</code>, and <code>dealloc</code> methods.
+        <code>init...</code> methods should be grouped together, followed by
+        other <code>NSObject</code> methods.
+      </p>
+      <p>
+        Convenience class methods for creating instances may precede the
+        <code>NSObject</code> methods.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Initialization" id="Initialization">Initialization</A></H3><SPAN class="link_button" id="link-Initialization__button" name="link-Initialization__button"><A href="?showone=Initialization#Initialization">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Initialization')" name="Initialization__button" id="Initialization__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Don't initialize variables to <code>0</code> or <code>nil</code> in the
+      init method; it's redundant.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Initialization__body" id="Initialization__body" style="display: none">
+      <p>
+        All memory for a newly allocated object is initialized to 0 (except
+        for <var>isa</var>), so don't clutter up the <code>init</code> method
+        by re-initializing variables to 0 or <code>nil</code>.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Avoid_+new" id="Avoid_+new">Avoid +new</A></H3><SPAN class="link_button" id="link-Avoid_+new__button" name="link-Avoid_+new__button"><A href="?showone=Avoid_+new#Avoid_+new">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Avoid_+new')" name="Avoid_+new__button" id="Avoid_+new__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Do not invoke the <code>NSObject</code> class method <code>new</code>,
+      nor override it in a subclass. Instead, use <code>alloc</code> and
+      <code>init</code> methods to instantiate retained objects.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Avoid_+new__body" id="Avoid_+new__body" style="display: none">
+      <p>
+        Modern Objective-C code explicitly calls <code>alloc</code> and an
+        <code>init</code> method to create and retain an object.  As the
+        <code>new</code> class method is rarely used, it makes reviewing code
+        for correct memory management more difficult.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Keep_the_Public_API_Simple" id="Keep_the_Public_API_Simple">Keep the Public API Simple</A></H3><SPAN class="link_button" id="link-Keep_the_Public_API_Simple__button" name="link-Keep_the_Public_API_Simple__button"><A href="?showone=Keep_the_Public_API_Simple#Keep_the_Public_API_Simple">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Keep_the_Public_API_Simple')" name="Keep_the_Public_API_Simple__button" id="Keep_the_Public_API_Simple__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Keep your class simple; avoid "kitchen-sink" APIs. If a method doesn't
+      need to be public, don't make it so. Use a private category to prevent
+      cluttering the public header.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Keep_the_Public_API_Simple__body" id="Keep_the_Public_API_Simple__body" style="display: none">
+      <p>
+        Unlike C++, Objective-C doesn't have a way to differentiate between
+        public and private methods—everything is public. As a result,
+        avoid placing methods in the public API unless they are actually
+        expected to be used by a consumer of the class. This helps reduce the
+        likelihood they'll be called when you're not expecting it. This includes
+        methods that are being overridden from the parent class. For internal
+        implementation methods, use a category defined in the implementation
+        file as opposed to adding them to the public header.
+      </p>
+      <DIV class="">
+<PRE>#import "GTMFoo.h"
+
+@interface GTMFoo (PrivateDelegateHandling)
+- (NSString *)doSomethingWithDelegate;  // Declare private method
+@end
+
+@implementation GTMFoo (PrivateDelegateHandling)
+...
+- (NSString *)doSomethingWithDelegate {
+  // Implement this method
+}
+...
+@end</PRE>
+</DIV>
+      <p>
+        If you are using Objective-C 2.0, you should instead declare your
+        private category using a <a href="https://developer.apple.com/documentation/Cocoa/Conceptual/ObjectiveC/Articles/chapter_4_section_5.html#">class
+        extension</a>, for example:
+      </p>
+      <DIV class="">
+<PRE>@interface GMFoo () { ... }</PRE>
+</DIV>
+      <p>
+        which will guarantee that the declared methods are implemented in the
+        <code>@implementation</code> section by issuing a compiler warning if
+        they are not.
+      </p>
+      <p>
+        Again, "private" methods are not really private. You could
+        accidentally override a superclass's "private" method, thus making a
+        very difficult bug to squash. In general, private methods should have
+        a fairly unique name that will prevent subclasses from unintentionally
+        overriding them.
+      </p>
+      <p>
+        Finally, Objective-C categories are a great way to segment a large
+        <code>@implementation</code> section into more understandable chunks
+        and to add new, application-specific functionality to the most
+        appropriate class. For example, instead of adding "middle truncation"
+        code to a random object in your app, make a new category on
+        <code>NSString</code>).
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="_import_and__include" id="_import_and__include">#import and #include</A></H3><SPAN class="link_button" id="link-_import_and__include__button" name="link-_import_and__include__button"><A href="?showone=_import_and__include#_import_and__include">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('_import_and__include')" name="_import_and__include__button" id="_import_and__include__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      <code>#import</code> Objective-C/Objective-C++ headers, and
+      <code>#include</code> C/C++ headers.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="_import_and__include__body" id="_import_and__include__body" style="display: none">
+      <p>
+        Choose between <code>#import</code> and <code>#include</code> based
+        on the language of the header that you are including.
+      </p>
+      <ul>
+        <li>When including a header that uses Objective-C or Objective-C++,
+            use <code>#import</code>.</li>
+        <li>When including a standard C or C++ header, use
+            <code>#include</code>.  The header should provide its own <a href="cppguide.xml?showone=The__define_Guard#The__define_Guard">#define
+            guard</a>.</li>
+      </ul>
+      <p>
+        Some Objective-C headers lack <code>#define</code> guards, and expect
+        to be included only by <code>#import</code>.  As Objective-C headers
+        may only be included in Objective-C source files and other Objective-C
+        headers, using <code>#import</code> across the board is appropriate.
+      </p>
+      <p>
+        Standard C and C++ headers without any Objective-C in them can expect
+        to be included by ordinary C and C++ files.  Since there is no
+        <code>#import</code> in standard C or C++, such files will be
+        included by <code>#include</code> in those cases.  Using
+        <code>#include</code> for them in Objective-C source files as well
+        means that these headers will always be included with the same
+        semantics.
+      </p>
+      <p>
+        This rule helps avoid inadvertent errors in cross-platform
+        projects.  A Mac developer introducing a new C or C++ header might
+        forget to add <code>#define</code> guards, which would not cause
+        problems on the Mac if the new header were included with
+        <code>#import</code>, but would break builds on other platforms
+        where <code>#include</code> is used.  Being consistent by using
+        <code>#include</code> on all platforms means that compilation is
+        more likely to succeed everywhere or fail everywhere, and avoids
+        the frustration of files working only on some platforms.
+      </p>
+      <DIV class="">
+<PRE>#import &lt;Cocoa/Cocoa.h&gt;
+#include &lt;CoreFoundation/CoreFoundation.h&gt;
+#import "GTMFoo.h"
+#include "base/basictypes.h"</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Use_Root_Frameworks" id="Use_Root_Frameworks">Use Root Frameworks</A></H3><SPAN class="link_button" id="link-Use_Root_Frameworks__button" name="link-Use_Root_Frameworks__button"><A href="?showone=Use_Root_Frameworks#Use_Root_Frameworks">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Use_Root_Frameworks')" name="Use_Root_Frameworks__button" id="Use_Root_Frameworks__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Include root frameworks over individual files.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Use_Root_Frameworks__body" id="Use_Root_Frameworks__body" style="display: none">
+      <p>
+        While it may seem tempting to include individual system headers from a
+        framework such as Cocoa or Foundation, in fact it's less work on the
+        compiler if you include the top-level root framework. The root
+        framework is generally pre-compiled and can be loaded much more
+        quickly. In addition, remember to use <code>#import</code> rather than
+        <code>#include</code> for Objective-C frameworks.
+      </p>
+      <DIV class="">
+<PRE>#import &lt;Foundation/Foundation.h&gt;     // good</PRE>
+</DIV>
+      <DIV class="">
+<PRE class="badcode">#import &lt;Foundation/NSArray.h&gt;        // avoid
+#import &lt;Foundation/NSString.h&gt;
+...</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Prefer_To_autorelease_At_Time_of_Creation" id="Prefer_To_autorelease_At_Time_of_Creation">Prefer To autorelease At Time of Creation</A></H3><SPAN class="link_button" id="link-Prefer_To_autorelease_At_Time_of_Creation__button" name="link-Prefer_To_autorelease_At_Time_of_Creation__button"><A href="?showone=Prefer_To_autorelease_At_Time_of_Creation#Prefer_To_autorelease_At_Time_of_Creation">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Prefer_To_autorelease_At_Time_of_Creation')" name="Prefer_To_autorelease_At_Time_of_Creation__button" id="Prefer_To_autorelease_At_Time_of_Creation__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      When creating new temporary objects, <code>autorelease</code> them on
+      the same line as you create them rather than a separate
+      <code>release</code> later in the same method.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Prefer_To_autorelease_At_Time_of_Creation__body" id="Prefer_To_autorelease_At_Time_of_Creation__body" style="display: none">
+      <p>
+        While ever so slightly slower, this prevents someone from accidentally
+        removing the <code>release</code> or inserting a <code>return</code>
+        before it and introducing a memory leak. E.g.:
+      </p>
+      <DIV class="">
+<PRE class="badcode">// AVOID (unless you have a compelling performance reason)
+MyController* controller = [[MyController alloc] init];
+// ... code here that might return ...
+[controller release];</PRE>
+</DIV>
+      <DIV class="">
+<PRE>// BETTER
+MyController* controller = [[[MyController alloc] init] autorelease];</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Autorelease_Then_Retain" id="Autorelease_Then_Retain">Autorelease Then Retain</A></H3><SPAN class="link_button" id="link-Autorelease_Then_Retain__button" name="link-Autorelease_Then_Retain__button"><A href="?showone=Autorelease_Then_Retain#Autorelease_Then_Retain">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Autorelease_Then_Retain')" name="Autorelease_Then_Retain__button" id="Autorelease_Then_Retain__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Assignment of objects follows the <code>autorelease</code> then
+      <code>retain</code> pattern.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Autorelease_Then_Retain__body" id="Autorelease_Then_Retain__body" style="display: none">
+      <p>
+        When assigning a new object to a variable, one must first release the
+        old object to avoid a memory leak. There are several "correct" ways to
+        handle this. We've chosen the "autorelease then retain" approach
+        because it's less prone to error. Be aware in tight loops it can fill
+        up the autorelease pool, and may be slightly less efficient, but we
+        feel the tradeoffs are acceptable.
+      </p>
+      <DIV class="">
+<PRE>- (void)setFoo:(GMFoo *)aFoo {
+  [_foo autorelease];  // Won't dealloc if |_foo| == |aFoo|
+  _foo = [aFoo retain];
+}</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Avoid_Accessors_During_init_and_dealloc" id="Avoid_Accessors_During_init_and_dealloc">Avoid Accessors During init and dealloc</A></H3><SPAN class="link_button" id="link-Avoid_Accessors_During_init_and_dealloc__button" name="link-Avoid_Accessors_During_init_and_dealloc__button"><A href="?showone=Avoid_Accessors_During_init_and_dealloc#Avoid_Accessors_During_init_and_dealloc">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Avoid_Accessors_During_init_and_dealloc')" name="Avoid_Accessors_During_init_and_dealloc__button" id="Avoid_Accessors_During_init_and_dealloc__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Instance subclasses may be in an inconsistent state during
+      <code>init</code> and <code>dealloc</code> method execution, so code in
+      those methods should avoid invoking accessors.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Avoid_Accessors_During_init_and_dealloc__body" id="Avoid_Accessors_During_init_and_dealloc__body" style="display: none">
+      <p>
+        Subclasses have not yet been initialized or have already deallocated
+        when <code>init</code> and <code>dealloc</code> methods execute, making
+        accessor methods potentially unreliable. Whenever practical, directly
+        assign to and release ivars in those methods rather than rely on
+        accessors.
+      </p>
+      <DIV class="">
+<PRE>- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _bar = [[NSMutableString alloc] init];  // good
+  }
+  return self;
+}
+
+- (void)dealloc {
+  [_bar release];                           // good
+  [super dealloc];
+}</PRE>
+</DIV>
+      <DIV class="">
+<PRE class="badcode">- (instancetype)init {
+  self = [super init];
+  if (self) {
+    self.bar = [NSMutableString string];  // avoid
+  }
+  return self;
+}
+
+- (void)dealloc {
+  self.bar = nil;                         // avoid
+  [super dealloc];
+}</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Dealloc_Instance_Variables_in_Declaration______________________Order" id="Dealloc_Instance_Variables_in_Declaration______________________Order">Dealloc Instance Variables in Declaration                      Order</A></H3><SPAN class="link_button" id="link-Dealloc_Instance_Variables_in_Declaration______________________Order__button" name="link-Dealloc_Instance_Variables_in_Declaration______________________Order__button"><A href="?showone=Dealloc_Instance_Variables_in_Declaration______________________Order#Dealloc_Instance_Variables_in_Declaration______________________Order">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Dealloc_Instance_Variables_in_Declaration______________________Order')" name="Dealloc_Instance_Variables_in_Declaration______________________Order__button" id="Dealloc_Instance_Variables_in_Declaration______________________Order__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      <code>dealloc</code> should process instance variables in the same order
+      the <code>@interface</code> declares them, so it is easier for a reviewer
+      to verify.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Dealloc_Instance_Variables_in_Declaration______________________Order__body" id="Dealloc_Instance_Variables_in_Declaration______________________Order__body" style="display: none">
+      <p>
+        A code reviewer checking a new or revised <code>dealloc</code>
+        implementation needs to make sure that every retained instance
+        variable gets released.
+      </p>
+      <p>
+        To simplify reviewing <code>dealloc</code>, order the code so that
+        the retained instance variables get released in the same order that
+        they are declared in the <code>@interface</code>. If
+        <code>dealloc</code> invokes other methods that release instance
+        variables, add comments describing what instance variables those
+        methods handle.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Setters_copy_NSStrings" id="Setters_copy_NSStrings">Setters copy NSStrings</A></H3><SPAN class="link_button" id="link-Setters_copy_NSStrings__button" name="link-Setters_copy_NSStrings__button"><A href="?showone=Setters_copy_NSStrings#Setters_copy_NSStrings">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Setters_copy_NSStrings')" name="Setters_copy_NSStrings__button" id="Setters_copy_NSStrings__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Setters taking an <code>NSString</code>, should always <code>copy</code>
+      the string it accepts.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Setters_copy_NSStrings__body" id="Setters_copy_NSStrings__body" style="display: none">
+      <p>
+        Never just <code>retain</code> the string. This avoids the caller
+        changing it under you without your knowledge. Don't assume that
+        because you're accepting an <code>NSString</code> that it's not
+        actually an <code>NSMutableString</code>.
+      </p>
+      <DIV class="">
+<PRE>- (void)setFoo:(NSString *)aFoo {
+  [_foo autorelease];
+  _foo = [aFoo copy];
+}</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Avoid_Throwing_Exceptions" id="Avoid_Throwing_Exceptions">Avoid Throwing Exceptions</A></H3><SPAN class="link_button" id="link-Avoid_Throwing_Exceptions__button" name="link-Avoid_Throwing_Exceptions__button"><A href="?showone=Avoid_Throwing_Exceptions#Avoid_Throwing_Exceptions">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Avoid_Throwing_Exceptions')" name="Avoid_Throwing_Exceptions__button" id="Avoid_Throwing_Exceptions__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Don't <code>@throw</code> Objective-C exceptions, but you should be
+      prepared to catch them from third-party or OS calls.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Avoid_Throwing_Exceptions__body" id="Avoid_Throwing_Exceptions__body" style="display: none">
+      <p>
+        We do compile with <code>-fobjc-exceptions</code> (mainly so we get
+        <code>@synchronized</code>), but we don't <code>@throw</code>. Use of
+        <code>@try</code>, <code>@catch</code>, and <code>@finally</code> are
+        allowed when required to properly use 3rd party code or libraries. If
+        you do use them please document exactly which methods you expect to
+        throw.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+
+  <DIV class="">
+<H3><A name="nil_Checks" id="nil_Checks">nil Checks</A></H3><SPAN class="link_button" id="link-nil_Checks__button" name="link-nil_Checks__button"><A href="?showone=nil_Checks#nil_Checks">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('nil_Checks')" name="nil_Checks__button" id="nil_Checks__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Use <code>nil</code> checks for logic flow only.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="nil_Checks__body" id="nil_Checks__body" style="display: none">
+      <p>
+        Use <code>nil</code> pointer checks for logic flow of the application,
+        not for preventing crashes when sending messages. With current compilers
+        (<a href="http://www.sealiesoftware.com/blog/archive/2012/2/29/objc_explain_return_value_of_message_to_nil.html">
+        as of LLVM 3.0/Xcode 4.2</a>), sending a message to <code>nil</code>
+        reliably returns nil as a pointer, zero as an integer or floating-point
+        value, structs initialized to 0, and <code>_Complex</code> values equal
+        to {0, 0}.
+      </p>
+      <p>
+        Note that this applies to <code>nil</code> as a message target, not as
+        a parameter value. Individual methods may or may not safely handle
+        <code>nil</code> parameter values.
+      </p>
+      <p>
+        Note too that this is distinct from checking C/C++ pointers and block
+        pointers against <code>NULL</code>, which the runtime does not handle
+        and will cause your application to crash. You still need to make sure
+        you do not dereference a <code>NULL</code> pointer.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="BOOL_Pitfalls" id="BOOL_Pitfalls">BOOL Pitfalls</A></H3><SPAN class="link_button" id="link-BOOL_Pitfalls__button" name="link-BOOL_Pitfalls__button"><A href="?showone=BOOL_Pitfalls#BOOL_Pitfalls">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('BOOL_Pitfalls')" name="BOOL_Pitfalls__button" id="BOOL_Pitfalls__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Be careful when converting general integral values to <code>BOOL</code>.
+      Avoid comparing directly with <code>YES</code>.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="BOOL_Pitfalls__body" id="BOOL_Pitfalls__body" style="display: none">
+      <p>
+        <code>BOOL</code> is defined as a signed char in Objective-C which means
+        that it can have values other than <code>YES</code> (1) and
+        <code>NO</code> (0). Do not cast or convert general integral values
+        directly to <code>BOOL</code>. Common mistakes include casting or
+        converting an array's size, a pointer value, or the result of a bitwise
+        logic operation to a <code>BOOL</code> which, depending on the value of
+        the last byte of the integral result, could still result in a
+        <code>NO</code> value. When converting a general integral value to a
+        <code>BOOL</code> use ternery operators to return a <code>YES</code> or
+        <code>NO</code> value.
+      </p>
+      <p>
+        You can safely interchange and convert <code>BOOL</code>,
+        <code>_Bool</code> and <code>bool</code> (see C++ Std 4.7.4, 4.12 and
+        C99 Std 6.3.1.2). You cannot safely interchange <code>BOOL</code> and
+        <code>Boolean</code> so treat <code>Booleans</code> as a general
+        integral value as discussed above. Only use <code>BOOL</code> in
+        Objective C method signatures.
+      </p>
+      <p>
+        Using logical operators (<code>&amp;&amp;</code>, <code>||</code> and
+        <code>!</code>) with <code>BOOL</code> is also valid and will return
+        values that can be safely converted to <code>BOOL</code> without the
+        need for a ternery operator.
+      </p>
+      <DIV class="">
+<PRE class="badcode">- (BOOL)isBold {
+  return [self fontTraits] &amp; NSFontBoldTrait;
+}
+- (BOOL)isValid {
+  return [self stringValue];
+}</PRE>
+</DIV>
+      <DIV class="">
+<PRE>- (BOOL)isBold {
+  return ([self fontTraits] &amp; NSFontBoldTrait) ? YES : NO;
+}
+- (BOOL)isValid {
+  return [self stringValue] != nil;
+}
+- (BOOL)isEnabled {
+  return [self isValid] &amp;&amp; [self isBold];
+}</PRE>
+</DIV>
+      <p>
+        Also, don't directly compare <code>BOOL</code> variables directly
+        with <code>YES</code>. Not only is it harder to read for those
+        well-versed in C, the first point above demonstrates that return
+        values may not always be what you expect.
+      </p>
+      <DIV class="">
+<PRE class="badcode">BOOL great = [foo isGreat];
+if (great == YES)
+  // ...be great!</PRE>
+</DIV>
+      <DIV class="">
+<PRE>BOOL great = [foo isGreat];
+if (great)
+  // ...be great!</PRE>
+</DIV>
+
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Properties" id="Properties">Properties</A></H3><SPAN class="link_button" id="link-Properties__button" name="link-Properties__button"><A href="?showone=Properties#Properties">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Properties')" name="Properties__button" id="Properties__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Use of the @property directive is preferred, with the following caveat:
+      properties are an Objective-C 2.0 feature which will limit your code to
+      running on the iPhone and Mac OS X 10.5 (Leopard) and higher. Dot notation
+      is allowed only for access to a declared <code>@property</code>.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Properties__body" id="Properties__body" style="display: none">
+      <P class=""><SPAN class="stylepoint_subsection">Naming</SPAN>
+        <p>
+          A property's associated instance variable's name must conform to the
+          leading _ requirement. The property's name should be the same as its
+          associated instance variable without the leading _. The optional space
+          between the <code>@property</code> and the opening parenthesis
+          should be omitted, as seen in the examples.
+        </p>
+
+        <DIV class="">
+<PRE>@interface MyClass : NSObject
+@property(copy, nonatomic) NSString *name;
+@end
+
+@implementation MyClass
+// No code required for auto-synthesis, else use:
+//   @synthesize name = _name;
+@end</PRE>
+</DIV>
+      </P>
+      <P class=""><SPAN class="stylepoint_subsection">Location</SPAN>
+        <p>
+          A property's declaration must come immediately after the instance
+          variable block of a class interface. A property's definition (if
+          not using automatic synthesis) must come immediately after the
+          <code>@implementation</code> block in a class definition. They are
+          indented at the same level as the <code>@interface</code> or
+          <code>@implementation</code> statements that they are enclosed in.
+        </p>
+        <DIV class="">
+<PRE>@interface MyClass : NSObject {
+ @private
+  NSString *_name;
+}
+@property(copy, nonatomic) NSString *name;
+@end
+
+@implementation MyClass
+@synthesize name = _name;
+
+- (instancetype)init {
+  ...
+}
+@end</PRE>
+</DIV>
+      </P>
+      <P class=""><SPAN class="stylepoint_subsection">Use Copy Attribute For Strings</SPAN>
+        <p>
+          NSString properties should always be declared with the
+          <code>copy</code> attribute.
+        </p>
+        <p>
+          This logically follows from the requirement that setters for
+          NSStrings always must use <code>copy</code> instead of
+          <code>retain</code>.
+        </p>
+      </P>
+      <P class=""><SPAN class="stylepoint_subsection">Atomicity</SPAN>
+        <p>
+          Be aware of the overhead of properties. By default, all synthesized
+          setters and getters are atomic. This gives each set and get calls a
+          substantial amount of synchronization overhead. Declare your
+          properties <code>nonatomic</code> unless you require atomicity.
+        </p>
+      </P>
+      <P class=""><SPAN class="stylepoint_subsection">Dot notation</SPAN>
+        <p>
+          Dot notation is idiomatic style for Objective-C 2.0. It may be used
+          when doing simple operations to get and set a <code>@property</code>
+          of an object, but should not be used to invoke other object behavior.
+        </p>
+        <DIV class="">
+<PRE>NSString *oldName = myObject.name;
+myObject.name = @"Alice";</PRE>
+</DIV>
+        <DIV class="">
+<PRE class="badcode">NSArray *array = [[NSArray arrayWithObject:@"hello"] retain];
+
+NSUInteger numberOfItems = array.count;  // not a property
+array.release;                           // not a property</PRE>
+</DIV>
+      </P>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Interfaces_Without_Instance_Variables" id="Interfaces_Without_Instance_Variables">Interfaces Without Instance Variables</A></H3><SPAN class="link_button" id="link-Interfaces_Without_Instance_Variables__button" name="link-Interfaces_Without_Instance_Variables__button"><A href="?showone=Interfaces_Without_Instance_Variables#Interfaces_Without_Instance_Variables">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Interfaces_Without_Instance_Variables')" name="Interfaces_Without_Instance_Variables__button" id="Interfaces_Without_Instance_Variables__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Omit the empty set of braces on interfaces that do not declare any
+      instance variables.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Interfaces_Without_Instance_Variables__body" id="Interfaces_Without_Instance_Variables__body" style="display: none">
+      <DIV class="">
+<PRE>@interface MyClass : NSObject
+// Does a lot of stuff
+- (void)fooBarBam;
+@end</PRE>
+</DIV>
+      <DIV class="">
+<PRE class="badcode">@interface MyClass : NSObject {
+}
+// Does a lot of stuff
+- (void)fooBarBam;
+@end</PRE>
+</DIV>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Automatically_Synthesized_Instance_Variables" id="Automatically_Synthesized_Instance_Variables">Automatically Synthesized Instance Variables</A></H3><SPAN class="link_button" id="link-Automatically_Synthesized_Instance_Variables__button" name="link-Automatically_Synthesized_Instance_Variables__button"><A href="?showone=Automatically_Synthesized_Instance_Variables#Automatically_Synthesized_Instance_Variables">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Automatically_Synthesized_Instance_Variables')" name="Automatically_Synthesized_Instance_Variables__button" id="Automatically_Synthesized_Instance_Variables__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      <p>
+        Use of automatically synthesized instance variables is preferred.  Code
+        that must support earlier versions of the compiler toolchain (Xcode 4.3
+        or earlier or when compiling with GCC) or is using properties inherited
+        from a protocol should prefer the @synthesize directive.
+      </p>
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Automatically_Synthesized_Instance_Variables__body" id="Automatically_Synthesized_Instance_Variables__body" style="display: none">
+      <DIV class="">
+<PRE>// Header file
+@protocol Thingy
+@property(nonatomic, copy) NSString *widgetName;
+@end
+
+@interface Foo : NSObject&lt;Thingy&gt;
+// A guy walks into a bar.
+@property(nonatomic, copy) NSString *bar;
+@end
+
+// Implementation file
+@interface Foo ()
+@property(nonatomic, retain) NSArray *baz;
+@end
+
+@implementation Foo
+@synthesize widgetName = _widgetName;
+@end</PRE>
+</DIV>
+
+      <p>
+        Automatically synthesized instance variables take the form of the
+        property's name prefixed with an underscore and so typically conform to
+        the required variable naming style.  If your property name is unusual,
+        or you are otherwise unable to use automatically synthesized instance
+        variables, use of the @synthesize directive is preferred, with the
+        instance variable name specified explicitly (as @synthesize does not add
+        a leading underscore by default).
+      </p>
+  </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Automatic_Reference_Counting__ARC_" id="Automatic_Reference_Counting__ARC_">Automatic Reference Counting (ARC)</A></H3><SPAN class="link_button" id="link-Automatic_Reference_Counting__ARC___button" name="link-Automatic_Reference_Counting__ARC___button"><A href="?showone=Automatic_Reference_Counting__ARC_#Automatic_Reference_Counting__ARC_">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Automatic_Reference_Counting__ARC_')" name="Automatic_Reference_Counting__ARC___button" id="Automatic_Reference_Counting__ARC___button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      <p>
+        For projects that use Xcode 4.2 or later and will run only on 64-bit
+        Mac OS X 10.7 and iOS 5.0 and later, ARC is preferred. Use manual
+        reference counting when supporting earlier environments where zeroing
+        weak pointers are not available.
+      </p>
+      <p>
+        Classes that require ARC should include a preprocessor directive to
+        prevent compilation using manual reference counting.
+      </p>
+      <p>
+        Ownership qualifiers like <code>__unsafe_unretained</code> and
+        <code>__weak</code> should precede variable names. Specifying
+        <code>__strong</code> for variables is not required since it is
+        the default. Properties, on the other hand, should always specify the
+        <code>strong</code> keyword rather than relying on the compiler default.
+      </p>
+      <p>
+        Files that are compiled using ARC need to have preprocessor directives
+        to prevent compilation without ARC. See the code snippet below for
+        details.
+      </p>
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Automatic_Reference_Counting__ARC___body" id="Automatic_Reference_Counting__ARC___body" style="display: none">
+      <p>
+        Example of an implementation file enforcing ARC style. Note that
+        declaring instance variables in the @implementation is permitted when
+        using ARC.
+        <DIV class="">
+<PRE>#if !defined(__has_feature) || !__has_feature(objc_arc)
+#error "This file requires ARC support."
+#endif
+
+#import "Foo.h"
+
+@implementation Foo {
+  Bar* __weak _bar;
+  Baz* __unsafe_unretained _baz;
+}
+// ...
+@end</PRE>
+</DIV>
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="NSNumber_Literals" id="NSNumber_Literals">NSNumber Literals</A></H3><SPAN class="link_button" id="link-NSNumber_Literals__button" name="link-NSNumber_Literals__button"><A href="?showone=NSNumber_Literals#NSNumber_Literals">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('NSNumber_Literals')" name="NSNumber_Literals__button" id="NSNumber_Literals__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      <p>
+        For projects that use Xcode 4.4 or later with clang, the use of
+        <a href="http://clang.llvm.org/docs/ObjectiveCLiterals.html">NSNumber literals</a>
+        is allowed. Note however that this will limit the portability of your
+        code to other toolchains.
+      </p>
+      </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="NSNumber_Literals__body" id="NSNumber_Literals__body" style="display: none">
+      <p>
+        NSNumber literals are used just like Objective C string literals.
+        Boxing is used when necessary. Code using NSNumber literals can be
+        deployed on any iOS/MacOS system.
+        <DIV class="">
+<PRE>NSNumber *fortyTwo = @42;
+NSNumber *piOverTwo = @(M_PI / 2);
+enum {
+  kMyEnum = 2;
+};
+NSNumber *myEnum = @(kMyEnum);</PRE>
+</DIV>
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+</DIV>
+
+
+<DIV class="">
+<H2 name="Cocoa_Patterns" id="Cocoa_Patterns">Cocoa Patterns</H2>
+
+  <DIV class="">
+<H3><A name="Delegate_Pattern" id="Delegate_Pattern">Delegate Pattern</A></H3><SPAN class="link_button" id="link-Delegate_Pattern__button" name="link-Delegate_Pattern__button"><A href="?showone=Delegate_Pattern#Delegate_Pattern">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Delegate_Pattern')" name="Delegate_Pattern__button" id="Delegate_Pattern__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Delegate objects should not be retained when doing so would create
+      a retain cycle.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Delegate_Pattern__body" id="Delegate_Pattern__body" style="display: none">
+      <p>
+        A class that implements the delegate pattern should typically:
+        <ol>
+          <li>
+            Have an instance variable named <var>_delegate</var> to reference
+            the delegate.
+          </li>
+          <li>
+            Thus, the accessor methods should be named <code>delegate</code>
+            and <code>setDelegate:</code>.
+          </li>
+          <li>
+            The <var>_delegate</var> object should be weak if the class
+            is typically retained by its delegate, such that a strong delegate
+            would create a retain cycle.
+          </li>
+        </ol>
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+  <DIV class="">
+<H3><A name="Model/View/Controller" id="Model/View/Controller">Model/View/Controller</A></H3><SPAN class="link_button" id="link-Model/View/Controller__button" name="link-Model/View/Controller__button"><A href="?showone=Model/View/Controller#Model/View/Controller">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Model/View/Controller')" name="Model/View/Controller__button" id="Model/View/Controller__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Separate the model from the view. Separate the controller from the
+      view and the model. Use <code>@protocol</code>s for callback APIs.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Model/View/Controller__body" id="Model/View/Controller__body" style="display: none">
+      <p>
+        <ul>
+          <li>
+            Separate model from view: don't build assumptions about the
+            presentation into the model or data source. Keep the interface
+            between the data source and the presentation abstract. Don't give
+            the model knowledge of its view. (A good rule of thumb is to ask
+            yourself if it's possible to have multiple presentations, with
+            different states, on a single instance of your data source.)
+          </li>
+          <li>
+            Separate controller from view and model: don't put all of the
+            "business logic" into view-related classes; this makes the code
+            very unusable. Make controller classes to host this code, but
+            ensure that the controller classes don't make too many assumptions
+            about the presentation.
+          </li>
+          <li>
+            Define callback APIs with <code>@protocol</code>, using
+            <code>@optional</code> if not all the methods are required.
+          </li>
+        </ul>
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+</DIV>
+
+<DIV class="">
+<H2 name="Historical_Notes" id="Historical_Notes">Historical Notes</H2>
+
+  <DIV class="">
+<H3><A name="Trailing_vs_Leading_Underscores" id="Trailing_vs_Leading_Underscores">Trailing vs Leading Underscores</A></H3><SPAN class="link_button" id="link-Trailing_vs_Leading_Underscores__button" name="link-Trailing_vs_Leading_Underscores__button"><A href="?showone=Trailing_vs_Leading_Underscores#Trailing_vs_Leading_Underscores">
+          link
+        </A></SPAN><SPAN class="showhide_button" onclick="javascript:ShowHideByName('Trailing_vs_Leading_Underscores')" name="Trailing_vs_Leading_Underscores__button" id="Trailing_vs_Leading_Underscores__button">▶</SPAN>
+    <DIV style="display:inline;" class="">
+      Trailing underscores were once preferred for instance variable names.
+    </DIV>
+    <DIV class="">
+<DIV class="stylepoint_body" name="Trailing_vs_Leading_Underscores__body" id="Trailing_vs_Leading_Underscores__body" style="display: none">
+      <p>
+        Our style guide used to have a rule saying that instance variables
+        should be named with a trailing underscore, similar to the naming of
+        member variables in C++.  This was changed to leading underscores to
+        be consistent with the broader Objective-C community, to better follow
+        Apple's official guidelines, and to allow for use of new compiler
+        features like automatic instance variable synthesis. New projects are
+        strongly encouraged to use leading underscores. Existing projects may
+        continue to use trailing underscores in new code to maintain
+        consistency with the rest of their codebase.
+      </p>
+    </DIV>
+</DIV>
+  </DIV>
+
+</DIV>
+
+<HR>
+
+<p align="right">
+Revision 2.59
+</p>
+
+
+
+<address>
+Mike Pinkerton <br>
+Greg Miller <br>
+Dave MacLachlan <br>
+</address>
+</BODY>
+</HTML>
